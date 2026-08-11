@@ -3,34 +3,34 @@ import 'package:flutter/material.dart';
 
 /// Full-screen, pinch-to-zoom photo viewer opened by tapping a thumbnail.
 /// Supports either a single photo ([show]) or a swipeable gallery starting
-/// at a given photo ([showGallery]) — the latter is what lets a menu item's
-/// multi-photo carousel actually be browsed once opened full-screen, instead
-/// of always landing on just the one photo that was tapped.
+/// at a given photo ([showGallery]).
 ///
-/// Deliberately no Hero flight in/out of this viewer: menu-item thumbnails
-/// commonly reuse the same seed/placeholder image URL across several cards,
-/// and Hero tags derived from that URL then collide (Flutter requires at
-/// most one Hero per tag within a route), which froze the transition on a
-/// small thumbnail instead of opening the viewer. A plain fade is simpler
-/// and can't collide.
+/// No Hero transition: menu-item thumbnails commonly reuse the same
+/// seed/placeholder image URL, which caused Hero-tag collisions (Flutter
+/// requires at most one Hero per tag per route), freezing the transition.
+/// A plain fade is collision-proof.
 class FullScreenImageViewer extends StatefulWidget {
   final List<String> imageUrls;
   final int initialIndex;
 
-  const FullScreenImageViewer({super.key, required this.imageUrls, this.initialIndex = 0});
+  const FullScreenImageViewer(
+      {super.key, required this.imageUrls, this.initialIndex = 0});
 
   static void show(BuildContext context, String imageUrl) {
     showGallery(context, [imageUrl]);
   }
 
-  static void showGallery(BuildContext context, List<String> imageUrls, {int initialIndex = 0}) {
+  static void showGallery(BuildContext context, List<String> imageUrls,
+      {int initialIndex = 0}) {
     Navigator.of(context).push(
       PageRouteBuilder(
         opaque: false,
-        barrierColor: Colors.black87,
-        pageBuilder: (context, animation, secondaryAnimation) => FadeTransition(
+        barrierColor: Colors.black,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            FadeTransition(
           opacity: animation,
-          child: FullScreenImageViewer(imageUrls: imageUrls, initialIndex: initialIndex),
+          child: FullScreenImageViewer(
+              imageUrls: imageUrls, initialIndex: initialIndex),
         ),
       ),
     );
@@ -41,7 +41,8 @@ class FullScreenImageViewer extends StatefulWidget {
 }
 
 class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
-  late final PageController _controller = PageController(initialPage: widget.initialIndex);
+  late final PageController _controller =
+      PageController(initialPage: widget.initialIndex);
   late int _page = widget.initialIndex;
 
   @override
@@ -53,26 +54,42 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
   @override
   Widget build(BuildContext context) {
     final multiple = widget.imageUrls.length > 1;
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          Positioned.fill(
-            child: PageView.builder(
-              controller: _controller,
-              itemCount: widget.imageUrls.length,
-              onPageChanged: (i) => setState(() => _page = i),
-              itemBuilder: (context, i) => GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: InteractiveViewer(
-                  minScale: 1,
-                  maxScale: 5,
-                  child: Center(child: _image(i)),
+          // Page view fills the entire screen. Each page is a constrained
+          // box that gives InteractiveViewer a definite size to work with —
+          // without explicit width/height Flutter Web collapses the viewer
+          // to the image's intrinsic (tiny) size, showing a black screen.
+          PageView.builder(
+            controller: _controller,
+            itemCount: widget.imageUrls.length,
+            onPageChanged: (i) => setState(() => _page = i),
+            itemBuilder: (context, i) {
+              return SizedBox(
+                width: size.width,
+                height: size.height,
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).pop(),
+                  child: InteractiveViewer(
+                    minScale: 0.5,
+                    maxScale: 5,
+                    child: SizedBox(
+                      width: size.width,
+                      height: size.height,
+                      child: _image(widget.imageUrls[i], size),
+                    ),
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
+
+          // Close button + page counter
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -85,23 +102,28 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                   if (multiple) ...[
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.black54,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         '${_page + 1} / ${widget.imageUrls.length}',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            color: Colors.white, fontWeight: FontWeight.w600),
                       ),
                     ),
                     const Spacer(),
+                    // Spacer to balance the close button on the left
                     const SizedBox(width: 44),
                   ],
                 ],
               ),
             ),
           ),
+
+          // Dot indicators at the bottom (only for galleries)
           if (multiple)
             Positioned(
               bottom: 24,
@@ -118,7 +140,9 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                     height: active ? 9 : 7,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: active ? Colors.white : Colors.white.withValues(alpha: 0.5),
+                      color: active
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.5),
                     ),
                   );
                 }),
@@ -129,15 +153,21 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
     );
   }
 
-  Widget _image(int index) {
+  Widget _image(String url, Size size) {
     return CachedNetworkImage(
-      imageUrl: widget.imageUrls[index],
+      imageUrl: url,
+      // fit: fill within the explicit SizedBox so the image actually covers
+      // the screen, then InteractiveViewer lets the user zoom/pan it.
       fit: BoxFit.contain,
-      placeholder: (ctx, u) => const Padding(
-        padding: EdgeInsets.all(48.0),
+      width: size.width,
+      height: size.height,
+      placeholder: (ctx, u) => const Center(
         child: CircularProgressIndicator(color: Colors.white),
       ),
-      errorWidget: (ctx, u, e) => const Icon(Icons.broken_image_outlined, color: Colors.white54, size: 64),
+      errorWidget: (ctx, u, e) => const Center(
+        child: Icon(Icons.broken_image_outlined,
+            color: Colors.white54, size: 64),
+      ),
     );
   }
 }
