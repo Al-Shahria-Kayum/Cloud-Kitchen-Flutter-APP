@@ -1,37 +1,44 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-/// Full-screen, pinch-to-zoom photo viewer opened by tapping a thumbnail.
-/// Supports either a single photo ([show]) or a swipeable gallery starting
-/// at a given photo ([showGallery]).
-///
-/// No Hero transition: menu-item thumbnails commonly reuse the same
-/// seed/placeholder image URL, which caused Hero-tag collisions (Flutter
-/// requires at most one Hero per tag per route), freezing the transition.
-/// A plain fade is collision-proof.
+/// Full-screen, pinch-to-zoom photo viewer with smooth page transitions.
+/// Arrow buttons + tappable dot indicators handle navigation (swipe is
+/// unreliable on Flutter Web when InteractiveViewer is present).
 class FullScreenImageViewer extends StatefulWidget {
   final List<String> imageUrls;
   final int initialIndex;
 
-  const FullScreenImageViewer(
-      {super.key, required this.imageUrls, this.initialIndex = 0});
+  const FullScreenImageViewer({
+    super.key,
+    required this.imageUrls,
+    this.initialIndex = 0,
+  });
 
   static void show(BuildContext context, String imageUrl) {
     showGallery(context, [imageUrl]);
   }
 
-  static void showGallery(BuildContext context, List<String> imageUrls,
-      {int initialIndex = 0}) {
+  static void showGallery(
+    BuildContext context,
+    List<String> imageUrls, {
+    int initialIndex = 0,
+  }) {
     Navigator.of(context).push(
       PageRouteBuilder(
-        opaque: false,
-        barrierColor: Colors.black,
+        opaque: true,
+        transitionDuration: const Duration(milliseconds: 220),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
         pageBuilder: (context, animation, secondaryAnimation) =>
-            FadeTransition(
-          opacity: animation,
-          child: FullScreenImageViewer(
-              imageUrls: imageUrls, initialIndex: initialIndex),
-        ),
+            FullScreenImageViewer(
+              imageUrls: imageUrls,
+              initialIndex: initialIndex,
+            ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            child: child,
+          );
+        },
       ),
     );
   }
@@ -41,108 +48,179 @@ class FullScreenImageViewer extends StatefulWidget {
 }
 
 class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
-  late final PageController _controller =
-      PageController(initialPage: widget.initialIndex);
   late int _page = widget.initialIndex;
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  // Animated values drive the cross-fade between pages.
+  // We keep the "leaving" image visible while the "entering" one fades in,
+  // giving a smooth dissolve instead of a hard cut or a laggy slide.
+  String? _leavingUrl;
+  String get _currentUrl => widget.imageUrls[_page];
+  bool _transitioning = false;
+
+  Future<void> _goTo(int index) async {
+    if (index < 0 || index >= widget.imageUrls.length || _transitioning) return;
+
+    setState(() {
+      _leavingUrl = _currentUrl;
+      _transitioning = true;
+    });
+
+    // Short settle before we flip — lets the arrow press feel acknowledged.
+    await Future.delayed(const Duration(milliseconds: 30));
+    if (!mounted) return;
+
+    setState(() {
+      _page = index;
+    });
+
+    // Hold the cross-fade duration, then clear the ghost.
+    await Future.delayed(const Duration(milliseconds: 320));
+    if (!mounted) return;
+    setState(() {
+      _leavingUrl = null;
+      _transitioning = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final multiple = widget.imageUrls.length > 1;
-    final size = MediaQuery.of(context).size;
+    final hasPrev = _page > 0;
+    final hasNext = _page < widget.imageUrls.length - 1;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Page view fills the entire screen. Each page is a constrained
-          // box that gives InteractiveViewer a definite size to work with —
-          // without explicit width/height Flutter Web collapses the viewer
-          // to the image's intrinsic (tiny) size, showing a black screen.
-          PageView.builder(
-            controller: _controller,
-            itemCount: widget.imageUrls.length,
-            onPageChanged: (i) => setState(() => _page = i),
-            itemBuilder: (context, i) {
-              return SizedBox(
-                width: size.width,
-                height: size.height,
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: InteractiveViewer(
-                    minScale: 0.5,
-                    maxScale: 5,
-                    child: SizedBox(
-                      width: size.width,
-                      height: size.height,
-                      child: _image(widget.imageUrls[i], size),
-                    ),
-                  ),
-                ),
-              );
-            },
+          // ── Leaving ghost (stays put while new image fades over it) ──────
+          if (_leavingUrl != null)
+            Positioned.fill(
+              child: _PhotoFrame(url: _leavingUrl!, opacity: 1.0),
+            ),
+
+          // ── Incoming image — fades in over the ghost ─────────────────────
+          Positioned.fill(
+            child: _AnimatedPhotoFrame(key: ValueKey(_page), url: _currentUrl),
           ),
 
-          // Close button + page counter
+          // ── Left arrow ───────────────────────────────────────────────────
+          if (multiple)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: AnimatedOpacity(
+                  opacity: hasPrev ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: _NavArrow(
+                    icon: Icons.chevron_left_rounded,
+                    onTap: hasPrev && !_transitioning
+                        ? () => _goTo(_page - 1)
+                        : null,
+                  ),
+                ),
+              ),
+            ),
+
+          // ── Right arrow ──────────────────────────────────────────────────
+          if (multiple)
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: AnimatedOpacity(
+                  opacity: hasNext ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: _NavArrow(
+                    icon: Icons.chevron_right_rounded,
+                    onTap: hasNext && !_transitioning
+                        ? () => _goTo(_page + 1)
+                        : null,
+                  ),
+                ),
+              ),
+            ),
+
+          // ── Top bar: close + "X / N" ──────────────────────────────────────
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
-                    onPressed: () => Navigator.of(context).pop(),
+                  Material(
+                    color: Colors.transparent,
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
                   ),
                   if (multiple) ...[
                     const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${_page + 1} / ${widget.imageUrls.length}',
-                        style: const TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.w600),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: Container(
+                          key: ValueKey(_page),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${_page + 1} / ${widget.imageUrls.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const Spacer(),
-                    // Spacer to balance the close button on the left
-                    const SizedBox(width: 44),
+                    const SizedBox(width: 48),
                   ],
                 ],
               ),
             ),
           ),
 
-          // Dot indicators at the bottom (only for galleries)
+          // ── Tappable pill dot indicators ──────────────────────────────────
           if (multiple)
             Positioned(
-              bottom: 24,
+              bottom: 20,
               left: 0,
               right: 0,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(widget.imageUrls.length, (i) {
                   final active = i == _page;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: active ? 9 : 7,
-                    height: active ? 9 : 7,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: active
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.5),
+                  return GestureDetector(
+                    onTap: _transitioning ? null : () => _goTo(i),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeOutCubic,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: active ? 24 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: active
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
                   );
                 }),
@@ -152,21 +230,162 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
       ),
     );
   }
+}
 
-  Widget _image(String url, Size size) {
-    return CachedNetworkImage(
-      imageUrl: url,
-      // fit: fill within the explicit SizedBox so the image actually covers
-      // the screen, then InteractiveViewer lets the user zoom/pan it.
-      fit: BoxFit.contain,
-      width: size.width,
-      height: size.height,
-      placeholder: (ctx, u) => const Center(
-        child: CircularProgressIndicator(color: Colors.white),
+/// Statically renders one image at a fixed opacity (used for the leaving ghost).
+class _PhotoFrame extends StatelessWidget {
+  final String url;
+  final double opacity;
+  const _PhotoFrame({required this.url, required this.opacity});
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: opacity,
+      child: InteractiveViewer(
+        minScale: 0.5,
+        maxScale: 5,
+        child: Center(child: _buildImage(context, url)),
       ),
-      errorWidget: (ctx, u, e) => const Center(
-        child: Icon(Icons.broken_image_outlined,
-            color: Colors.white54, size: 64),
+    );
+  }
+
+  Widget _buildImage(BuildContext context, String u) {
+    return LayoutBuilder(
+      builder: (ctx, constraints) {
+        final w = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : MediaQuery.of(ctx).size.width;
+        final h = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : MediaQuery.of(ctx).size.height;
+        return CachedNetworkImage(
+          imageUrl: u,
+          fit: BoxFit.contain,
+          width: w,
+          height: h,
+          placeholder: (_, __) => const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          ),
+          errorWidget: (_, __, ___) => const Center(
+            child: Icon(
+              Icons.broken_image_outlined,
+              color: Colors.white54,
+              size: 64,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Fades in from transparent to fully opaque when first mounted.
+/// The [key] (set to ValueKey(_page)) forces a fresh widget each navigation,
+/// restarting the fade-in animation every time.
+class _AnimatedPhotoFrame extends StatefulWidget {
+  final String url;
+  const _AnimatedPhotoFrame({super.key, required this.url});
+
+  @override
+  State<_AnimatedPhotoFrame> createState() => _AnimatedPhotoFrameState();
+}
+
+class _AnimatedPhotoFrameState extends State<_AnimatedPhotoFrame>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 300),
+  );
+  late final Animation<double> _opacity = CurvedAnimation(
+    parent: _ctrl,
+    curve: Curves.easeOut,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: InteractiveViewer(
+        minScale: 0.5,
+        maxScale: 5,
+        child: Center(
+          child: LayoutBuilder(
+            builder: (ctx, constraints) {
+              final w = constraints.maxWidth.isFinite
+                  ? constraints.maxWidth
+                  : MediaQuery.of(ctx).size.width;
+              final h = constraints.maxHeight.isFinite
+                  ? constraints.maxHeight
+                  : MediaQuery.of(ctx).size.height;
+              return CachedNetworkImage(
+                imageUrl: widget.url,
+                fit: BoxFit.contain,
+                width: w,
+                height: h,
+                placeholder: (_, __) => const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+                errorWidget: (_, __, ___) => const Center(
+                  child: Icon(
+                    Icons.broken_image_outlined,
+                    color: Colors.white54,
+                    size: 64,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Translucent circular arrow button.
+class _NavArrow extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  const _NavArrow({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.symmetric(horizontal: 6),
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: onTap != null
+              ? Colors.black.withValues(alpha: 0.50)
+              : Colors.transparent,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.25),
+            width: 1,
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: onTap != null
+              ? Colors.white
+              : Colors.white.withValues(alpha: 0.0),
+          size: 30,
+        ),
       ),
     );
   }
