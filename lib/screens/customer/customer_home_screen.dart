@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../widgets/responsive_app_bar.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/customer_provider.dart';
 import '../../services/location_service.dart';
@@ -23,7 +24,8 @@ class CustomerHomeScreen extends StatefulWidget {
   State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
 }
 
-class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBindingObserver {
+class _CustomerHomeScreenState extends State<CustomerHomeScreen>
+    with WidgetsBindingObserver {
   int _currentIndex = 0;
   double _currentLat = 23.8103; // Default Dhaka Center
   double _currentLng = 90.4125;
@@ -139,7 +141,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
     LocationService.clearMockLocation();
     _fetchCurrentLocationAndLoadKitchens();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Mock location cleared. Using GPS fallback.')),
+      const SnackBar(
+        content: Text('Mock location cleared. Using GPS fallback.'),
+      ),
     );
   }
 
@@ -148,22 +152,26 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
     final customerProvider = context.watch<CustomerProvider>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cloud Kitchen'),
+      appBar: ResponsiveAppBar(
+        title: 'Cloud Kitchen',
         actions: [
-          IconButton(
-            tooltip: 'Your bKash number',
-            icon: const Icon(Icons.payments_outlined),
+          AppBarActionItem(
+            icon: Icons.payments_outlined,
+            label: 'Your bKash number',
             onPressed: () => showBkashNumberSheet(context),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
+          AppBarActionItem(
+            icon: Icons.logout_rounded,
+            label: 'Log out',
+            alwaysInline: true,
             onPressed: () async {
-              Provider.of<CustomerProvider>(context, listen: false).stopLocationTracking();
+              Provider.of<CustomerProvider>(
+                context,
+                listen: false,
+              ).stopLocationTracking();
               await Provider.of<AuthProvider>(context, listen: false).logout();
-              if (mounted) {
+              if (mounted)
                 Navigator.of(context).popUntil((route) => route.isFirst);
-              }
             },
           ),
         ],
@@ -192,7 +200,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
     );
   }
 
-  Widget _buildBrowseTab(BuildContext context, CustomerProvider customerProvider) {
+  Widget _buildBrowseTab(
+    BuildContext context,
+    CustomerProvider customerProvider,
+  ) {
     final text = Theme.of(context).textTheme;
 
     return RefreshIndicator(
@@ -206,22 +217,31 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (!customerProvider.isTrackingLocation && customerProvider.errorMessage != null) ...[
+            if (!customerProvider.isTrackingLocation &&
+                customerProvider.errorMessage != null) ...[
               Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
                   color: Colors.orange.withValues(alpha: 0.12),
                   borderRadius: AppRadius.lgBr,
-                  border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: Colors.orangeAccent.withValues(alpha: 0.4),
+                  ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.location_off_rounded, color: Colors.orangeAccent, size: 18),
+                    const Icon(
+                      Icons.location_off_rounded,
+                      color: Colors.orangeAccent,
+                      size: 18,
+                    ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Text(
                         customerProvider.errorMessage!,
-                        style: text.bodySmall?.copyWith(color: Colors.orangeAccent),
+                        style: text.bodySmall?.copyWith(
+                          color: Colors.orangeAccent,
+                        ),
                       ),
                     ),
                   ],
@@ -236,14 +256,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
             const SectionHeader(title: 'Kitchens Near You'),
 
             if (customerProvider.isLoading)
-              Column(
-                children: List.generate(3, (_) => const SkeletonCardRow()),
-              )
+              Column(children: List.generate(3, (_) => const SkeletonCardRow()))
             else if (customerProvider.kitchens.isEmpty)
               const EmptyState(
                 icon: Icons.storefront_outlined,
                 title: 'No kitchens found nearby',
-                message: 'Try adjusting your location to discover kitchens in another area.',
+                message:
+                    'Try adjusting your location to discover kitchens in another area.',
               )
             else
               ListView.builder(
@@ -272,11 +291,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
                     distanceKm: dist,
                     onTap: () {
                       Navigator.of(context).push(
-                        appPageRoute(KitchenDetailsScreen(
-                          kitchen: kitchen,
-                          customerLatitude: _currentLat,
-                          customerLongitude: _currentLng,
-                        )),
+                        appPageRoute(
+                          KitchenDetailsScreen(
+                            kitchen: kitchen,
+                            customerLatitude: _currentLat,
+                            customerLongitude: _currentLng,
+                          ),
+                        ),
                       );
                     },
                   );
@@ -303,24 +324,38 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
         children: [
           InkWell(
             borderRadius: AppRadius.mdBr,
-            onTap: () => setState(() => _showLocationPanel = !_showLocationPanel),
+            onTap: () =>
+                setState(() => _showLocationPanel = !_showLocationPanel),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm + 2,
+              ),
               child: Row(
                 children: [
-                  Icon(Icons.tune_rounded, size: 16, color: scheme.onSurface.withValues(alpha: 0.55)),
+                  Icon(
+                    Icons.tune_rounded,
+                    size: 16,
+                    color: scheme.onSurface.withValues(alpha: 0.55),
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: Text(
                       'Location testing (${_currentLat.toStringAsFixed(3)}, ${_currentLng.toStringAsFixed(3)})',
-                      style: text.labelMedium?.copyWith(color: scheme.onSurface.withValues(alpha: 0.6)),
+                      style: text.labelMedium?.copyWith(
+                        color: scheme.onSurface.withValues(alpha: 0.6),
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   AnimatedRotation(
                     turns: _showLocationPanel ? 0.5 : 0,
                     duration: AppMotion.fast,
-                    child: Icon(Icons.expand_more_rounded, size: 18, color: scheme.onSurface.withValues(alpha: 0.55)),
+                    child: Icon(
+                      Icons.expand_more_rounded,
+                      size: 18,
+                      color: scheme.onSurface.withValues(alpha: 0.55),
+                    ),
                   ),
                 ],
               ),
@@ -329,9 +364,16 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
           AnimatedCrossFade(
             duration: AppMotion.base,
             sizeCurve: AppMotion.curve,
-            crossFadeState: _showLocationPanel ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+            crossFadeState: _showLocationPanel
+                ? CrossFadeState.showFirst
+                : CrossFadeState.showSecond,
             firstChild: Padding(
-              padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.md,
+                0,
+                AppSpacing.md,
+                AppSpacing.md,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -341,16 +383,28 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
                       Expanded(
                         child: TextField(
                           controller: _mockLatController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                          decoration: const InputDecoration(labelText: 'Lat', isDense: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                            signed: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Lat',
+                            isDense: true,
+                          ),
                         ),
                       ),
                       const SizedBox(width: AppSpacing.sm),
                       Expanded(
                         child: TextField(
                           controller: _mockLngController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                          decoration: const InputDecoration(labelText: 'Lng', isDense: true),
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                            signed: true,
+                          ),
+                          decoration: const InputDecoration(
+                            labelText: 'Lng',
+                            isDense: true,
+                          ),
                         ),
                       ),
                     ],
@@ -380,7 +434,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
     );
   }
 
-  Widget _buildOrdersTab(BuildContext context, CustomerProvider customerProvider) {
+  Widget _buildOrdersTab(
+    BuildContext context,
+    CustomerProvider customerProvider,
+  ) {
     if (customerProvider.isLoading && customerProvider.myOrders.isEmpty) {
       return ListView(
         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -411,9 +468,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
           child: InkWell(
             borderRadius: AppRadius.lgBr,
             onTap: () {
-              Navigator.of(context).push(
-                appPageRoute(CustomerOrderDetailsScreen(order: order)),
-              );
+              Navigator.of(
+                context,
+              ).push(appPageRoute(CustomerOrderDetailsScreen(order: order)));
             },
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.md),
@@ -424,9 +481,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(order.kitchenName ?? 'Kitchen Order', style: text.titleMedium),
+                        Text(
+                          order.kitchenName ?? 'Kitchen Order',
+                          style: text.titleMedium,
+                        ),
                         const SizedBox(height: 4),
-                        Text('Total: ${formatCurrency(order.totalAmount)}', style: text.bodyMedium),
+                        Text(
+                          'Total: ${formatCurrency(order.totalAmount)}',
+                          style: text.bodyMedium,
+                        ),
                         const SizedBox(height: 2),
                         Text(
                           'Placed: ${order.createdAt.toLocal().toString().substring(0, 16)}',
@@ -441,7 +504,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> with WidgetsBin
                     children: [
                       StatusPill(status: order.status, dense: true),
                       const SizedBox(height: 8),
-                      Icon(Icons.chevron_right_rounded, size: 18, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4)),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.4),
+                      ),
                     ],
                   ),
                 ],
@@ -486,7 +555,8 @@ class _KitchenCard extends StatefulWidget {
   State<_KitchenCard> createState() => _KitchenCardState();
 }
 
-class _KitchenCardState extends State<_KitchenCard> with SingleTickerProviderStateMixin {
+class _KitchenCardState extends State<_KitchenCard>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _fade;
   late final Animation<Offset> _slide;
@@ -497,7 +567,10 @@ class _KitchenCardState extends State<_KitchenCard> with SingleTickerProviderSta
     _controller = AnimationController(vsync: this, duration: AppMotion.slow);
     final curved = CurvedAnimation(parent: _controller, curve: AppMotion.curve);
     _fade = curved;
-    _slide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(curved);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(curved);
     Future.delayed(Duration(milliseconds: 30 * widget.index.clamp(0, 6)), () {
       if (mounted) _controller.forward();
     });
@@ -534,7 +607,11 @@ class _KitchenCardState extends State<_KitchenCard> with SingleTickerProviderSta
                       // The list card shows the owner's profile photo (not
                       // the kitchen's cover photo) — falls back to the cover
                       // photo only if the owner hasn't set one either.
-                      url: (widget.ownerAvatarUrl != null && widget.ownerAvatarUrl!.isNotEmpty) ? widget.ownerAvatarUrl : widget.imageUrl,
+                      url:
+                          (widget.ownerAvatarUrl != null &&
+                              widget.ownerAvatarUrl!.isNotEmpty)
+                          ? widget.ownerAvatarUrl
+                          : widget.imageUrl,
                       width: 88,
                       height: 88,
                       radius: AppRadius.mdBr,
@@ -562,7 +639,9 @@ class _KitchenCardState extends State<_KitchenCard> with SingleTickerProviderSta
                         LiveLocationText(
                           latitude: widget.latitude,
                           longitude: widget.longitude,
-                          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                          style: text.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
                           icon: Icons.location_on_outlined,
                           iconSize: 13,
                           iconColor: scheme.onSurfaceVariant,
@@ -571,7 +650,10 @@ class _KitchenCardState extends State<_KitchenCard> with SingleTickerProviderSta
                         Row(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: scheme.primaryContainer,
                                 borderRadius: AppRadius.pillBr,
@@ -579,11 +661,17 @@ class _KitchenCardState extends State<_KitchenCard> with SingleTickerProviderSta
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.near_me_rounded, size: 12, color: scheme.onPrimaryContainer),
+                                  Icon(
+                                    Icons.near_me_rounded,
+                                    size: 12,
+                                    color: scheme.onPrimaryContainer,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     '${widget.distanceKm.toStringAsFixed(1)} km',
-                                    style: text.labelSmall?.copyWith(color: scheme.onPrimaryContainer),
+                                    style: text.labelSmall?.copyWith(
+                                      color: scheme.onPrimaryContainer,
+                                    ),
                                   ),
                                 ],
                               ),
