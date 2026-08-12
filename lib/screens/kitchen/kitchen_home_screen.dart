@@ -28,7 +28,8 @@ class KitchenHomeScreen extends StatefulWidget {
   State<KitchenHomeScreen> createState() => _KitchenHomeScreenState();
 }
 
-class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindingObserver {
+class _KitchenHomeScreenState extends State<KitchenHomeScreen>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
@@ -55,7 +56,9 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
   bool _isUploadingCover = false;
 
   Future<void> _pickAndUploadAvatar() async {
-    final XFile? file = await _avatarPicker.pickImage(source: ImageSource.gallery);
+    final XFile? file = await _avatarPicker.pickImage(
+      source: ImageSource.gallery,
+    );
     if (file == null || !mounted) return;
 
     final bytes = await file.readAsBytes();
@@ -68,27 +71,49 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
     setState(() => _isUploadingAvatar = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(success ? 'Profile picture updated!' : friendlyErrorMessage(authProvider.errorMessage, fallback: 'Failed to update profile picture.')),
+        content: Text(
+          success
+              ? 'Profile picture updated!'
+              : friendlyErrorMessage(
+                  authProvider.errorMessage,
+                  fallback: 'Failed to update profile picture.',
+                ),
+        ),
         backgroundColor: success ? Colors.green : Colors.redAccent,
       ),
     );
   }
 
   Future<void> _pickAndUploadCoverPhoto() async {
-    final XFile? file = await _coverPicker.pickImage(source: ImageSource.gallery);
+    final XFile? file = await _coverPicker.pickImage(
+      source: ImageSource.gallery,
+    );
     if (file == null || !mounted) return;
 
     final bytes = await file.readAsBytes();
     setState(() => _isUploadingCover = true);
 
-    final kitchenProvider = Provider.of<KitchenProvider>(context, listen: false);
-    final success = await kitchenProvider.uploadKitchenCoverImage(bytes, file.name);
+    final kitchenProvider = Provider.of<KitchenProvider>(
+      context,
+      listen: false,
+    );
+    final success = await kitchenProvider.uploadKitchenCoverImage(
+      bytes,
+      file.name,
+    );
 
     if (!mounted) return;
     setState(() => _isUploadingCover = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(success ? 'Cover photo updated!' : friendlyErrorMessage(kitchenProvider.errorMessage, fallback: 'Failed to update cover photo.')),
+        content: Text(
+          success
+              ? 'Cover photo updated!'
+              : friendlyErrorMessage(
+                  kitchenProvider.errorMessage,
+                  fallback: 'Failed to update cover photo.',
+                ),
+        ),
         backgroundColor: success ? Colors.green : Colors.redAccent,
       ),
     );
@@ -117,7 +142,10 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
     });
 
     if (_addressController.text.trim().isEmpty) {
-      final resolved = await GeocodingService.reverseGeocode(_onboardLat!, _onboardLng!);
+      final resolved = await GeocodingService.reverseGeocode(
+        _onboardLat!,
+        _onboardLng!,
+      );
       if (!mounted || _addressController.text.trim().isNotEmpty) return;
       setState(() => _addressController.text = resolved);
     }
@@ -129,7 +157,10 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
     // re-subscribing on resume is cheap since .stream() re-runs the initial
     // SELECT too, restoring state even if the socket died while backgrounded.
     if (state == AppLifecycleState.resumed) {
-      final kitchenProvider = Provider.of<KitchenProvider>(context, listen: false);
+      final kitchenProvider = Provider.of<KitchenProvider>(
+        context,
+        listen: false,
+      );
       if (kitchenProvider.kitchen != null) {
         kitchenProvider.subscribeToOrders();
       }
@@ -173,7 +204,9 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
     if (!_formKey.currentState!.validate()) return;
     if (_detectingOnboardLocation) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Still detecting your location — one moment…')),
+        const SnackBar(
+          content: Text('Still detecting your location — one moment…'),
+        ),
       );
       return;
     }
@@ -207,7 +240,12 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(friendlyErrorMessage(kitchenProvider.errorMessage, fallback: 'Onboarding failed. Please try again.')),
+          content: Text(
+            friendlyErrorMessage(
+              kitchenProvider.errorMessage,
+              fallback: 'Onboarding failed. Please try again.',
+            ),
+          ),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -222,7 +260,10 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
     setState(() => _isUpdatingLocation = true);
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final kitchenProvider = Provider.of<KitchenProvider>(context, listen: false);
+    final kitchenProvider = Provider.of<KitchenProvider>(
+      context,
+      listen: false,
+    );
     final kitchen = kitchenProvider.kitchen;
     if (kitchen == null) {
       setState(() => _isUpdatingLocation = false);
@@ -230,7 +271,10 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
     }
 
     final location = await LocationService.getCurrentLocation();
-    final resolvedAddress = await GeocodingService.reverseGeocode(location['latitude']!, location['longitude']!);
+    final resolvedAddress = await GeocodingService.reverseGeocode(
+      location['latitude']!,
+      location['longitude']!,
+    );
 
     final success = await kitchenProvider.saveKitchen(
       ownerId: authProvider.user!.id,
@@ -247,8 +291,17 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
     setState(() => _isUpdatingLocation = false);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(success ? 'Kitchen location updated to $resolvedAddress' : friendlyErrorMessage(kitchenProvider.errorMessage, fallback: 'Could not update location. Please try again.')),
-        backgroundColor: success ? context.appColors.success : Theme.of(context).colorScheme.error,
+        content: Text(
+          success
+              ? 'Kitchen location updated to $resolvedAddress'
+              : friendlyErrorMessage(
+                  kitchenProvider.errorMessage,
+                  fallback: 'Could not update location. Please try again.',
+                ),
+        ),
+        backgroundColor: success
+            ? context.appColors.success
+            : Theme.of(context).colorScheme.error,
       ),
     );
   }
@@ -328,7 +381,14 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
           IconButton(
             tooltip: 'Update kitchen location',
             icon: _isUpdatingLocation
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : const Icon(Icons.edit_location_alt_outlined),
             onPressed: _isUpdatingLocation ? null : _updateKitchenLocation,
           ),
@@ -366,7 +426,9 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                   children: [
                     ClipRRect(
                       borderRadius: AppRadius.lgBr,
-                      child: (kitchenProvider.kitchen!.imageUrl != null && kitchenProvider.kitchen!.imageUrl!.isNotEmpty)
+                      child:
+                          (kitchenProvider.kitchen!.imageUrl != null &&
+                              kitchenProvider.kitchen!.imageUrl!.isNotEmpty)
                           ? NetworkFoodImage(
                               url: kitchenProvider.kitchen!.imageUrl,
                               width: double.infinity,
@@ -378,7 +440,13 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                               width: double.infinity,
                               height: 150,
                               color: scheme.surfaceContainerHighest,
-                              child: Icon(Icons.storefront_rounded, size: 40, color: scheme.onSurfaceVariant.withValues(alpha: 0.4)),
+                              child: Icon(
+                                Icons.storefront_rounded,
+                                size: 40,
+                                color: scheme.onSurfaceVariant.withValues(
+                                  alpha: 0.4,
+                                ),
+                              ),
                             ),
                     ),
                     if (_isUploadingCover)
@@ -386,14 +454,19 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                         color: Colors.black45,
                         width: double.infinity,
                         height: 150,
-                        child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+                        child: const Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        ),
                       )
                     else
                       Positioned(
                         bottom: 8,
                         right: 8,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black54,
                             borderRadius: AppRadius.pillBr,
@@ -401,11 +474,25 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                              const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 14,
+                              ),
                               const SizedBox(width: 4),
                               Text(
-                                (kitchenProvider.kitchen!.imageUrl != null && kitchenProvider.kitchen!.imageUrl!.isNotEmpty) ? 'Change cover' : 'Add cover photo',
-                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                                (kitchenProvider.kitchen!.imageUrl != null &&
+                                        kitchenProvider
+                                            .kitchen!
+                                            .imageUrl!
+                                            .isNotEmpty)
+                                    ? 'Change cover'
+                                    : 'Add cover photo',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ],
                           ),
@@ -433,34 +520,64 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         GestureDetector(
-                          onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
+                          onTap: _isUploadingAvatar
+                              ? null
+                              : _pickAndUploadAvatar,
                           child: Stack(
                             alignment: Alignment.bottomRight,
                             children: [
                               CircleAvatar(
                                 radius: 28,
-                                backgroundColor: Colors.white.withValues(alpha: 0.15),
-                                backgroundImage: (authProvider.profile?.avatarUrl != null && authProvider.profile!.avatarUrl!.isNotEmpty)
-                                    ? CachedNetworkImageProvider(authProvider.profile!.avatarUrl!)
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: 0.15,
+                                ),
+                                backgroundImage:
+                                    (authProvider.profile?.avatarUrl != null &&
+                                        authProvider
+                                            .profile!
+                                            .avatarUrl!
+                                            .isNotEmpty)
+                                    ? CachedNetworkImageProvider(
+                                        authProvider.profile!.avatarUrl!,
+                                      )
                                     : null,
                                 child: _isUploadingAvatar
                                     ? const SizedBox(
                                         width: 20,
                                         height: 20,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
                                       )
-                                    : (authProvider.profile?.avatarUrl == null || authProvider.profile!.avatarUrl!.isEmpty)
-                                        ? const Icon(Icons.person, color: Colors.white, size: 28)
-                                        : null,
+                                    : (authProvider.profile?.avatarUrl ==
+                                              null ||
+                                          authProvider
+                                              .profile!
+                                              .avatarUrl!
+                                              .isEmpty)
+                                    ? const Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                        size: 28,
+                                      )
+                                    : null,
                               ),
                               Container(
                                 padding: const EdgeInsets.all(3),
                                 decoration: BoxDecoration(
                                   color: scheme.primary,
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 1.5),
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1.5,
+                                  ),
                                 ),
-                                child: const Icon(Icons.camera_alt, color: Colors.white, size: 12),
+                                child: const Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
                               ),
                             ],
                           ),
@@ -472,13 +589,21 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                             children: [
                               Text(
                                 kitchenProvider.kitchen!.name,
-                                style: text.headlineSmall?.copyWith(color: Colors.white),
+                                style: text.headlineSmall?.copyWith(
+                                  color: Colors.white,
+                                ),
                               ),
                               const SizedBox(height: AppSpacing.xs),
                               LiveLocationText(
-                                latitude: authProvider.profile?.latitude ?? kitchenProvider.kitchen!.latitude,
-                                longitude: authProvider.profile?.longitude ?? kitchenProvider.kitchen!.longitude,
-                                style: text.bodySmall?.copyWith(color: Colors.white70),
+                                latitude:
+                                    authProvider.profile?.latitude ??
+                                    kitchenProvider.kitchen!.latitude,
+                                longitude:
+                                    authProvider.profile?.longitude ??
+                                    kitchenProvider.kitchen!.longitude,
+                                style: text.bodySmall?.copyWith(
+                                  color: Colors.white70,
+                                ),
                               ),
                             ],
                           ),
@@ -496,7 +621,9 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.06),
                         borderRadius: AppRadius.mdBr,
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.14),
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -519,13 +646,17 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                                   kitchenProvider.kitchen!.isActive
                                       ? 'Open for orders'
                                       : 'Closed',
-                                  style: text.titleMedium?.copyWith(color: Colors.white),
+                                  style: text.titleMedium?.copyWith(
+                                    color: Colors.white,
+                                  ),
                                 ),
                                 Text(
                                   kitchenProvider.kitchen!.isActive
                                       ? 'Customers can order from you now'
                                       : 'New orders are paused',
-                                  style: text.bodySmall?.copyWith(color: Colors.white70),
+                                  style: text.bodySmall?.copyWith(
+                                    color: Colors.white70,
+                                  ),
                                 ),
                               ],
                             ),
@@ -539,16 +670,24 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                       ),
                     ),
                     const SizedBox(height: AppSpacing.md),
-                    _LiveLocationBadge(isTracking: kitchenProvider.isTrackingLocation),
-                    if (!kitchenProvider.isTrackingLocation && kitchenProvider.errorMessage != null) ...[
+                    _LiveLocationBadge(
+                      isTracking: kitchenProvider.isTrackingLocation,
+                    ),
+                    if (!kitchenProvider.isTrackingLocation &&
+                        kitchenProvider.errorMessage != null) ...[
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         kitchenProvider.errorMessage!,
-                        style: text.bodySmall?.copyWith(color: Colors.orangeAccent),
+                        style: text.bodySmall?.copyWith(
+                          color: Colors.orangeAccent,
+                        ),
                       ),
                     ],
                     const SizedBox(height: AppSpacing.lg),
-                    Divider(color: Colors.white.withValues(alpha: 0.14), height: 1),
+                    Divider(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      height: 1,
+                    ),
                     const SizedBox(height: AppSpacing.lg),
                     Row(
                       children: [
@@ -557,7 +696,9 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                           child: _buildMetricColumn(
                             context,
                             'Avg rating',
-                            _avgRating > 0 ? _avgRating.toStringAsFixed(1) : '—',
+                            _avgRating > 0
+                                ? _avgRating.toStringAsFixed(1)
+                                : '—',
                             valueStyle: text.displaySmall?.copyWith(
                               color: context.appColors.ratingStar,
                             ),
@@ -576,20 +717,26 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                               onTap: () => Navigator.of(context).push(
                                 appPageRoute(
                                   ReviewsScreen(
-                                    title: '${kitchenProvider.kitchen!.name} Reviews',
+                                    title:
+                                        '${kitchenProvider.kitchen!.name} Reviews',
                                     avgRating: _avgRating,
                                     reviewCount: _ratingCount,
-                                    loadReviews: kitchenProvider.getKitchenReviews,
+                                    loadReviews:
+                                        kitchenProvider.getKitchenReviews,
                                   ),
                                 ),
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: AppSpacing.sm,
+                                ),
                                 child: _buildMetricColumn(
                                   context,
                                   'Reviews',
                                   '$_ratingCount',
-                                  valueStyle: text.titleLarge?.copyWith(color: Colors.white),
+                                  valueStyle: text.titleLarge?.copyWith(
+                                    color: Colors.white,
+                                  ),
                                   tappable: true,
                                 ),
                               ),
@@ -601,19 +748,24 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                           flex: 3,
                           child: Semantics(
                             button: true,
-                            label: '${kitchenProvider.orders.length} orders, view order history',
+                            label:
+                                '${kitchenProvider.orders.length} orders, view order history',
                             child: InkWell(
                               borderRadius: AppRadius.mdBr,
                               onTap: () => Navigator.of(context).push(
                                 appPageRoute(const KitchenOrderHistoryScreen()),
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: AppSpacing.sm,
+                                ),
                                 child: _buildMetricColumn(
                                   context,
                                   'Orders',
                                   '${kitchenProvider.orders.length}',
-                                  valueStyle: text.titleLarge?.copyWith(color: Colors.white),
+                                  valueStyle: text.titleLarge?.copyWith(
+                                    color: Colors.white,
+                                  ),
                                   tappable: true,
                                 ),
                               ),
@@ -646,14 +798,19 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                   Text('Incoming orders', style: text.headlineSmall),
                   if (pendingOrders.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: scheme.primaryContainer,
                         borderRadius: AppRadius.pillBr,
                       ),
                       child: Text(
                         '${pendingOrders.length}',
-                        style: text.labelMedium?.copyWith(color: scheme.onPrimaryContainer),
+                        style: text.labelMedium?.copyWith(
+                          color: scheme.onPrimaryContainer,
+                        ),
                       ),
                     ),
                 ],
@@ -674,9 +831,16 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                     final order = pendingOrders[index];
                     return _IncomingOrderCard(
                       order: order,
-                      onAccept: () => kitchenProvider.updateOrderStatus(order.id, 'accepted'),
-                      onReject: () => kitchenProvider.updateOrderStatus(order.id, 'rejected'),
-                      onConfirmPayment: () => kitchenProvider.confirmPaymentReceived(order.id),
+                      onAccept: () => kitchenProvider.updateOrderStatus(
+                        order.id,
+                        'accepted',
+                      ),
+                      onReject: () => kitchenProvider.updateOrderStatus(
+                        order.id,
+                        'rejected',
+                      ),
+                      onConfirmPayment: () =>
+                          kitchenProvider.confirmPaymentReceived(order.id),
                       onTap: () => Navigator.of(context).push(
                         appPageRoute(KitchenOrderDetailsScreen(order: order)),
                       ),
@@ -693,7 +857,8 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                 const EmptyState(
                   icon: Icons.soup_kitchen_rounded,
                   title: 'No active orders',
-                  message: 'Orders you accept will be tracked here until delivery.',
+                  message:
+                      'Orders you accept will be tracked here until delivery.',
                 )
               else
                 ListView.builder(
@@ -718,10 +883,10 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
   }
 
   Widget _headerDivider() => Container(
-        width: 1,
-        height: 36,
-        color: Colors.white.withValues(alpha: 0.14),
-      );
+    width: 1,
+    height: 36,
+    color: Colors.white.withValues(alpha: 0.14),
+  );
 
   Widget _buildMetricColumn(
     BuildContext context,
@@ -752,11 +917,17 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
           children: [
             Text(
               label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.white60),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: Colors.white60),
             ),
             if (tappable) ...[
               const SizedBox(width: 1),
-              const Icon(Icons.chevron_right_rounded, size: 13, color: Colors.white60),
+              const Icon(
+                Icons.chevron_right_rounded,
+                size: 13,
+                color: Colors.white60,
+              ),
             ],
           ],
         ),
@@ -784,7 +955,11 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                     color: scheme.primaryContainer,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.storefront_rounded, size: 44, color: scheme.onPrimaryContainer),
+                  child: Icon(
+                    Icons.storefront_rounded,
+                    size: 44,
+                    color: scheme.onPrimaryContainer,
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.lg),
@@ -831,10 +1006,7 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                     val == null || val.isEmpty ? 'Enter address' : null,
               ),
               const SizedBox(height: AppSpacing.lg),
-              Text(
-                'Kitchen location',
-                style: text.titleSmall,
-              ),
+              Text('Kitchen location', style: text.titleSmall),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 'Captured automatically from your device\'s current position — this is saved permanently as your kitchen\'s pickup location. You can update it any time from your dashboard.',
@@ -842,7 +1014,10 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
               ),
               const SizedBox(height: AppSpacing.sm),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.md,
+                  vertical: AppSpacing.sm + 2,
+                ),
                 decoration: BoxDecoration(
                   color: scheme.surfaceContainerHighest,
                   borderRadius: AppRadius.mdBr,
@@ -850,9 +1025,13 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                 child: Row(
                   children: [
                     Icon(
-                      _detectingOnboardLocation ? Icons.gps_not_fixed_rounded : Icons.gps_fixed_rounded,
+                      _detectingOnboardLocation
+                          ? Icons.gps_not_fixed_rounded
+                          : Icons.gps_fixed_rounded,
                       size: 18,
-                      color: _detectingOnboardLocation ? scheme.onSurfaceVariant : context.appColors.success,
+                      color: _detectingOnboardLocation
+                          ? scheme.onSurfaceVariant
+                          : context.appColors.success,
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
@@ -864,7 +1043,11 @@ class _KitchenHomeScreenState extends State<KitchenHomeScreen> with WidgetsBindi
                       ),
                     ),
                     if (_detectingOnboardLocation)
-                      const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     else
                       IconButton(
                         tooltip: 'Re-detect location',
@@ -904,14 +1087,17 @@ class _LiveLocationBadge extends StatefulWidget {
   State<_LiveLocationBadge> createState() => _LiveLocationBadgeState();
 }
 
-class _LiveLocationBadgeState extends State<_LiveLocationBadge> with SingleTickerProviderStateMixin {
+class _LiveLocationBadgeState extends State<_LiveLocationBadge>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
-      ..repeat();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
   }
 
   @override
@@ -942,16 +1128,26 @@ class _LiveLocationBadgeState extends State<_LiveLocationBadge> with SingleTicke
                           height: 22 * (0.6 + t * 0.6),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: (1 - t) * 0.35),
+                            color: Colors.white.withValues(
+                              alpha: (1 - t) * 0.35,
+                            ),
                           ),
                         ),
                         child!,
                       ],
                     );
                   },
-                  child: const Icon(Icons.gps_fixed_rounded, color: Colors.white, size: 15),
+                  child: const Icon(
+                    Icons.gps_fixed_rounded,
+                    color: Colors.white,
+                    size: 15,
+                  ),
                 )
-              : Icon(Icons.gps_not_fixed_rounded, color: Colors.white.withValues(alpha: 0.6), size: 15),
+              : Icon(
+                  Icons.gps_not_fixed_rounded,
+                  color: Colors.white.withValues(alpha: 0.6),
+                  size: 15,
+                ),
         ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
@@ -1046,9 +1242,15 @@ class _IncomingOrderCard extends StatelessWidget {
                         onPressed: onReject,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: scheme.error,
-                          side: BorderSide(color: scheme.error.withValues(alpha: 0.4)),
-                          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                          shape: RoundedRectangleBorder(borderRadius: AppRadius.pillBr),
+                          side: BorderSide(
+                            color: scheme.error.withValues(alpha: 0.4),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.sm,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.pillBr,
+                          ),
                         ),
                         icon: const Icon(Icons.close_rounded, size: 18),
                         label: const Text('Reject'),
@@ -1065,7 +1267,9 @@ class _IncomingOrderCard extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: AppSpacing.sm),
                         child: Text(
                           'bKash TrxID: ${order.customerBkashTxnId}',
-                          style: text.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                          style: text.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     Row(
@@ -1075,9 +1279,15 @@ class _IncomingOrderCard extends StatelessWidget {
                             onPressed: onReject,
                             style: OutlinedButton.styleFrom(
                               foregroundColor: scheme.error,
-                              side: BorderSide(color: scheme.error.withValues(alpha: 0.4)),
-                              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                              shape: RoundedRectangleBorder(borderRadius: AppRadius.pillBr),
+                              side: BorderSide(
+                                color: scheme.error.withValues(alpha: 0.4),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: AppSpacing.sm,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: AppRadius.pillBr,
+                              ),
                             ),
                             child: const Text('Reject'),
                           ),
@@ -1090,8 +1300,12 @@ class _IncomingOrderCard extends StatelessWidget {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: appColors.success,
                               foregroundColor: appColors.onSuccess,
-                              padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                              shape: RoundedRectangleBorder(borderRadius: AppRadius.pillBr),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: AppSpacing.sm,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: AppRadius.pillBr,
+                              ),
                               elevation: 0,
                             ),
                             icon: const Icon(Icons.verified_rounded, size: 18),
@@ -1110,9 +1324,15 @@ class _IncomingOrderCard extends StatelessWidget {
                         onPressed: onReject,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: scheme.error,
-                          side: BorderSide(color: scheme.error.withValues(alpha: 0.4)),
-                          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                          shape: RoundedRectangleBorder(borderRadius: AppRadius.pillBr),
+                          side: BorderSide(
+                            color: scheme.error.withValues(alpha: 0.4),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.sm,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.pillBr,
+                          ),
                         ),
                         icon: const Icon(Icons.close_rounded, size: 18),
                         label: const Text('Reject'),
@@ -1125,8 +1345,12 @@ class _IncomingOrderCard extends StatelessWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: appColors.success,
                           foregroundColor: appColors.onSuccess,
-                          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-                          shape: RoundedRectangleBorder(borderRadius: AppRadius.pillBr),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: AppSpacing.sm,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.pillBr,
+                          ),
                           elevation: 0,
                         ),
                         icon: const Icon(Icons.check_rounded, size: 18),
@@ -1190,7 +1414,11 @@ class _PaymentStatusChip extends StatelessWidget {
           Icon(icon, size: 14, color: fg),
           const SizedBox(width: 6),
           Flexible(
-            child: Text(label, style: text.labelSmall?.copyWith(color: fg), overflow: TextOverflow.ellipsis),
+            child: Text(
+              label,
+              style: text.labelSmall?.copyWith(color: fg),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -1223,7 +1451,10 @@ class _ActiveOrderCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(order.customerName ?? 'Customer', style: text.titleMedium),
+                    Text(
+                      order.customerName ?? 'Customer',
+                      style: text.titleMedium,
+                    ),
                     if (summary.isNotEmpty) ...[
                       const SizedBox(height: 2),
                       Text(
@@ -1247,7 +1478,11 @@ class _ActiveOrderCard extends StatelessWidget {
                     style: text.titleMedium?.copyWith(color: scheme.primary),
                   ),
                   const SizedBox(height: AppSpacing.sm),
-                  Icon(Icons.arrow_forward_ios_rounded, size: 14, color: scheme.onSurface.withValues(alpha: 0.4)),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: scheme.onSurface.withValues(alpha: 0.4),
+                  ),
                 ],
               ),
             ],
