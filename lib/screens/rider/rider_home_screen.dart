@@ -11,6 +11,7 @@ import '../../widgets/app_page_route.dart';
 import '../../widgets/app_shimmer.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/live_location_text.dart';
+import '../../widgets/responsive_app_bar.dart';
 import '../../widgets/section_header.dart';
 import '../../utils/async_guard.dart';
 import '../shared/bkash_settings_sheet.dart';
@@ -25,13 +26,18 @@ class RiderHomeScreen extends StatefulWidget {
   State<RiderHomeScreen> createState() => _RiderHomeScreenState();
 }
 
-class _RiderHomeScreenState extends State<RiderHomeScreen> with WidgetsBindingObserver {
+class _RiderHomeScreenState extends State<RiderHomeScreen>
+    with WidgetsBindingObserver {
   double _riderLat = 23.8103; // Default Dhaka Center
   double _riderLng = 90.4125;
   bool _showLocationPanel = false;
 
-  final TextEditingController _latController = TextEditingController(text: "23.8103");
-  final TextEditingController _lngController = TextEditingController(text: "90.4125");
+  final TextEditingController _latController = TextEditingController(
+    text: "23.8103",
+  );
+  final TextEditingController _lngController = TextEditingController(
+    text: "90.4125",
+  );
 
   double _avgRating = 0.0;
   int _ratingCount = 0;
@@ -90,7 +96,11 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> with WidgetsBindingOb
     }
 
     await runGuarded(
-      () => riderProvider.updateRiderLocation(authProvider.user!.id, _riderLat, _riderLng),
+      () => riderProvider.updateRiderLocation(
+        authProvider.user!.id,
+        _riderLat,
+        _riderLng,
+      ),
       onError: (e) => debugPrint('updateRiderLocation failed: $e'),
     );
     await runGuarded(
@@ -146,7 +156,10 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> with WidgetsBindingOb
       if (!mounted) return;
       final scheme = Theme.of(context).colorScheme;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Rider location updated to: ($lat, $lng)'), backgroundColor: scheme.secondary),
+        SnackBar(
+          content: Text('Rider location updated to: ($lat, $lng)'),
+          backgroundColor: scheme.secondary,
+        ),
       );
     }
   }
@@ -166,46 +179,55 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> with WidgetsBindingOb
 
     if (authProvider.user != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _syncLocationTracking(riderProvider, authProvider.user!.id);
+        if (mounted)
+          _syncLocationTracking(riderProvider, authProvider.user!.id);
       });
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Rider Dashboard'),
+      appBar: ResponsiveAppBar(
+        title: 'Rider Dashboard',
         actions: [
-          IconButton(
-            tooltip: 'Your bKash number',
-            icon: const Icon(Icons.payments_outlined),
+          AppBarActionItem(
+            icon: Icons.payments_outlined,
+            label: 'Your bKash number',
             onPressed: () => showBkashNumberSheet(context),
           ),
-          IconButton(
-            tooltip: 'Delivery History',
-            icon: const Icon(Icons.receipt_long_outlined),
+          AppBarActionItem(
+            icon: Icons.receipt_long_outlined,
+            label: 'Delivery History',
             onPressed: authProvider.user == null
                 ? null
                 : () => Navigator.of(context).push(
-                      appPageRoute(RiderOrderHistoryScreen(riderId: authProvider.user!.id)),
+                    appPageRoute(
+                      RiderOrderHistoryScreen(riderId: authProvider.user!.id),
                     ),
+                  ),
           ),
-          IconButton(
-            tooltip: 'My Reviews',
-            icon: const Icon(Icons.star_outline_rounded),
+          AppBarActionItem(
+            icon: Icons.star_outline_rounded,
+            label: 'My Reviews',
             onPressed: authProvider.user == null
                 ? null
                 : () => Navigator.of(context).push(
-                      appPageRoute(
-                        ReviewsScreen(
-                          title: 'My Reviews',
-                          avgRating: _avgRating,
-                          reviewCount: _ratingCount,
-                          loadReviews: () => riderProvider.getRiderReviews(authProvider.user!.id),
+                    appPageRoute(
+                      ReviewsScreen(
+                        title: 'My Reviews',
+                        avgRating: _avgRating,
+                        reviewCount: _ratingCount,
+                        loadReviews: () => riderProvider.getRiderReviews(
+                          authProvider.user!.id,
                         ),
                       ),
                     ),
+                  ),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
+          AppBarActionItem(
+            icon: Icons.logout_rounded,
+            label: 'Log out',
+            // Keep logout reachable in one tap even when the other three
+            // actions collapse into the overflow menu on a narrow phone.
+            alwaysInline: true,
             onPressed: () async {
               await authProvider.logout();
               if (mounted) {
@@ -231,7 +253,8 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> with WidgetsBindingOb
               _GpsStatusCard(
                 isTracking: riderProvider.isTrackingLocation,
                 showPanel: _showLocationPanel,
-                onTogglePanel: () => setState(() => _showLocationPanel = !_showLocationPanel),
+                onTogglePanel: () =>
+                    setState(() => _showLocationPanel = !_showLocationPanel),
                 latController: _latController,
                 lngController: _lngController,
                 onApply: _applyRiderMockLocation,
@@ -245,7 +268,11 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> with WidgetsBindingOb
                   order: riderProvider.activeDelivery!,
                   onTap: () {
                     Navigator.of(context).push(
-                      appPageRoute(RiderOrderDetailsScreen(order: riderProvider.activeDelivery!)),
+                      appPageRoute(
+                        RiderOrderDetailsScreen(
+                          order: riderProvider.activeDelivery!,
+                        ),
+                      ),
                     );
                   },
                 ),
@@ -257,13 +284,17 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> with WidgetsBindingOb
                 title: 'Available Deliveries Nearby',
                 trailing: '${riderProvider.availableDeliveries.length}',
               ),
-              if (riderProvider.isLoading && riderProvider.availableDeliveries.isEmpty)
-                Column(children: List.generate(3, (_) => const SkeletonCardRow()))
+              if (riderProvider.isLoading &&
+                  riderProvider.availableDeliveries.isEmpty)
+                Column(
+                  children: List.generate(3, (_) => const SkeletonCardRow()),
+                )
               else if (riderProvider.availableDeliveries.isEmpty)
                 const EmptyState(
                   icon: Icons.moped_outlined,
                   title: 'No deliveries available right now',
-                  message: 'New delivery requests nearby will show up here automatically.',
+                  message:
+                      'New delivery requests nearby will show up here automatically.',
                 )
               else
                 ListView.builder(
@@ -282,15 +313,30 @@ class _RiderHomeScreenState extends State<RiderHomeScreen> with WidgetsBindingOb
                       riderFee: order.riderFee,
                       hasActiveDelivery: riderProvider.activeDelivery != null,
                       onAccept: () async {
-                        final success = await riderProvider.acceptDelivery(order.id, authProvider.user!.id);
+                        final success = await riderProvider.acceptDelivery(
+                          order.id,
+                          authProvider.user!.id,
+                        );
                         if (!mounted) return;
                         if (success) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: const Text('Delivery accepted!'), backgroundColor: context.appColors.success),
+                            SnackBar(
+                              content: const Text('Delivery accepted!'),
+                              backgroundColor: context.appColors.success,
+                            ),
                           );
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(friendlyErrorMessage(riderProvider.errorMessage, fallback: 'Failed to accept delivery. Please try again.')), backgroundColor: scheme.error),
+                            SnackBar(
+                              content: Text(
+                                friendlyErrorMessage(
+                                  riderProvider.errorMessage,
+                                  fallback:
+                                      'Failed to accept delivery. Please try again.',
+                                ),
+                              ),
+                              backgroundColor: scheme.error,
+                            ),
                           );
                         }
                       },
@@ -317,11 +363,19 @@ class _EarningsCard extends StatelessWidget {
     final text = Theme.of(context).textTheme;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(AppSpacing.xl, AppSpacing.xl, AppSpacing.xl, AppSpacing.lg),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.xl,
+        AppSpacing.xl,
+        AppSpacing.xl,
+        AppSpacing.lg,
+      ),
       decoration: BoxDecoration(
         borderRadius: AppRadius.lgBr,
         gradient: LinearGradient(
-          colors: [colors.success, Color.lerp(colors.success, Colors.black, 0.35)!],
+          colors: [
+            colors.success,
+            Color.lerp(colors.success, Colors.black, 0.35)!,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -352,19 +406,28 @@ class _EarningsCard extends StatelessWidget {
                   color: colors.onSuccess.withValues(alpha: 0.14),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.payments_rounded, color: colors.onSuccess, size: 20),
+                child: Icon(
+                  Icons.payments_rounded,
+                  color: colors.onSuccess,
+                  size: 20,
+                ),
               ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
             formatCurrency(earnings),
-            style: text.displayLarge?.copyWith(color: colors.onSuccess, letterSpacing: -0.6),
+            style: text.displayLarge?.copyWith(
+              color: colors.onSuccess,
+              letterSpacing: -0.6,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
             'Accumulated rider fees from completed deliveries',
-            style: text.bodySmall?.copyWith(color: colors.onSuccess.withValues(alpha: 0.7)),
+            style: text.bodySmall?.copyWith(
+              color: colors.onSuccess.withValues(alpha: 0.7),
+            ),
           ),
         ],
       ),
@@ -395,14 +458,17 @@ class _GpsStatusCard extends StatefulWidget {
   State<_GpsStatusCard> createState() => _GpsStatusCardState();
 }
 
-class _GpsStatusCardState extends State<_GpsStatusCard> with SingleTickerProviderStateMixin {
+class _GpsStatusCardState extends State<_GpsStatusCard>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
-      ..repeat();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
   }
 
   @override
@@ -441,7 +507,9 @@ class _GpsStatusCardState extends State<_GpsStatusCard> with SingleTickerProvide
                                   height: 40 * (0.6 + t * 0.6),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: colors.success.withValues(alpha: (1 - t) * 0.35),
+                                    color: colors.success.withValues(
+                                      alpha: (1 - t) * 0.35,
+                                    ),
                                   ),
                                 ),
                                 child!,
@@ -455,7 +523,11 @@ class _GpsStatusCardState extends State<_GpsStatusCard> with SingleTickerProvide
                               shape: BoxShape.circle,
                               color: colors.successContainer,
                             ),
-                            child: Icon(Icons.gps_fixed_rounded, color: colors.success, size: 18),
+                            child: Icon(
+                              Icons.gps_fixed_rounded,
+                              color: colors.success,
+                              size: 18,
+                            ),
                           ),
                         )
                       : Container(
@@ -466,7 +538,11 @@ class _GpsStatusCardState extends State<_GpsStatusCard> with SingleTickerProvide
                             shape: BoxShape.circle,
                             color: scheme.outline.withValues(alpha: 0.2),
                           ),
-                          child: Icon(Icons.gps_off_rounded, color: scheme.onSurface.withValues(alpha: 0.5), size: 18),
+                          child: Icon(
+                            Icons.gps_off_rounded,
+                            color: scheme.onSurface.withValues(alpha: 0.5),
+                            size: 18,
+                          ),
                         ),
                 ),
                 const SizedBox(width: AppSpacing.md),
@@ -475,7 +551,10 @@ class _GpsStatusCardState extends State<_GpsStatusCard> with SingleTickerProvide
                     widget.isTracking
                         ? 'Live GPS tracking active — broadcasting your location'
                         : 'GPS tracking starts automatically once you accept a delivery',
-                    style: text.bodyMedium?.copyWith(fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),
+                    style: text.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                 ),
               ],
@@ -493,21 +572,34 @@ class _GpsStatusCardState extends State<_GpsStatusCard> with SingleTickerProvide
                     borderRadius: AppRadius.mdBr,
                     onTap: widget.onTogglePanel,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm + 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm + 2,
+                      ),
                       child: Row(
                         children: [
-                          Icon(Icons.science_outlined, size: 16, color: scheme.onSurface.withValues(alpha: 0.55)),
+                          Icon(
+                            Icons.science_outlined,
+                            size: 16,
+                            color: scheme.onSurface.withValues(alpha: 0.55),
+                          ),
                           const SizedBox(width: AppSpacing.sm),
                           Expanded(
                             child: Text(
                               'Manual location override (testing only)',
-                              style: text.labelMedium?.copyWith(color: scheme.onSurface.withValues(alpha: 0.6)),
+                              style: text.labelMedium?.copyWith(
+                                color: scheme.onSurface.withValues(alpha: 0.6),
+                              ),
                             ),
                           ),
                           AnimatedRotation(
                             turns: widget.showPanel ? 0.5 : 0,
                             duration: AppMotion.fast,
-                            child: Icon(Icons.expand_more_rounded, size: 18, color: scheme.onSurface.withValues(alpha: 0.55)),
+                            child: Icon(
+                              Icons.expand_more_rounded,
+                              size: 18,
+                              color: scheme.onSurface.withValues(alpha: 0.55),
+                            ),
                           ),
                         ],
                       ),
@@ -516,9 +608,16 @@ class _GpsStatusCardState extends State<_GpsStatusCard> with SingleTickerProvide
                   AnimatedCrossFade(
                     duration: AppMotion.base,
                     sizeCurve: AppMotion.curve,
-                    crossFadeState: widget.showPanel ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                    crossFadeState: widget.showPanel
+                        ? CrossFadeState.showFirst
+                        : CrossFadeState.showSecond,
                     firstChild: Padding(
-                      padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.md),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.md,
+                        0,
+                        AppSpacing.md,
+                        AppSpacing.md,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -528,16 +627,30 @@ class _GpsStatusCardState extends State<_GpsStatusCard> with SingleTickerProvide
                               Expanded(
                                 child: TextField(
                                   controller: widget.latController,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                                  decoration: const InputDecoration(labelText: 'Latitude', isDense: true),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                        signed: true,
+                                      ),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Latitude',
+                                    isDense: true,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: AppSpacing.sm),
                               Expanded(
                                 child: TextField(
                                   controller: widget.lngController,
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                                  decoration: const InputDecoration(labelText: 'Longitude', isDense: true),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                        signed: true,
+                                      ),
+                                  decoration: const InputDecoration(
+                                    labelText: 'Longitude',
+                                    isDense: true,
+                                  ),
                                 ),
                               ),
                             ],
@@ -547,7 +660,10 @@ class _GpsStatusCardState extends State<_GpsStatusCard> with SingleTickerProvide
                             alignment: Alignment.centerRight,
                             child: FilledButton.tonalIcon(
                               onPressed: widget.onApply,
-                              icon: const Icon(Icons.my_location_rounded, size: 16),
+                              icon: const Icon(
+                                Icons.my_location_rounded,
+                                size: 16,
+                              ),
                               label: const Text('Update & Broadcast Location'),
                             ),
                           ),
@@ -582,7 +698,10 @@ class _ActiveDeliveryCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: AppRadius.lgBr,
-        border: Border.all(color: colors.warning.withValues(alpha: 0.5), width: 1.5),
+        border: Border.all(
+          color: colors.warning.withValues(alpha: 0.5),
+          width: 1.5,
+        ),
         color: colors.warningContainer.withValues(alpha: 0.35),
       ),
       child: Material(
@@ -596,8 +715,15 @@ class _ActiveDeliveryCard extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: colors.warning.withValues(alpha: 0.18), shape: BoxShape.circle),
-                  child: Icon(Icons.two_wheeler_rounded, color: colors.warning, size: 26),
+                  decoration: BoxDecoration(
+                    color: colors.warning.withValues(alpha: 0.18),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.two_wheeler_rounded,
+                    color: colors.warning,
+                    size: 26,
+                  ),
                 ),
                 const SizedBox(width: AppSpacing.md),
                 Expanded(
@@ -620,12 +746,18 @@ class _ActiveDeliveryCard extends StatelessWidget {
                       const SizedBox(height: AppSpacing.xs),
                       Text(
                         'In progress — tap for details',
-                        style: text.labelMedium?.copyWith(color: colors.onWarningContainer),
+                        style: text.labelMedium?.copyWith(
+                          color: colors.onWarningContainer,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios_rounded, color: scheme.onSurface.withValues(alpha: 0.4), size: 16),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: scheme.onSurface.withValues(alpha: 0.4),
+                  size: 16,
+                ),
               ],
             ),
           ),
@@ -663,7 +795,8 @@ class _AvailableDeliveryCard extends StatefulWidget {
   State<_AvailableDeliveryCard> createState() => _AvailableDeliveryCardState();
 }
 
-class _AvailableDeliveryCardState extends State<_AvailableDeliveryCard> with SingleTickerProviderStateMixin {
+class _AvailableDeliveryCardState extends State<_AvailableDeliveryCard>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _fade;
   late final Animation<Offset> _slide;
@@ -674,7 +807,10 @@ class _AvailableDeliveryCardState extends State<_AvailableDeliveryCard> with Sin
     _controller = AnimationController(vsync: this, duration: AppMotion.slow);
     final curved = CurvedAnimation(parent: _controller, curve: AppMotion.curve);
     _fade = curved;
-    _slide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero).animate(curved);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(curved);
     Future.delayed(Duration(milliseconds: 30 * widget.index.clamp(0, 6)), () {
       if (mounted) _controller.forward();
     });
@@ -712,7 +848,11 @@ class _AvailableDeliveryCardState extends State<_AvailableDeliveryCard> with Sin
                         children: [
                           Row(
                             children: [
-                              Icon(Icons.storefront_rounded, size: 15, color: scheme.onSurface.withValues(alpha: 0.55)),
+                              Icon(
+                                Icons.storefront_rounded,
+                                size: 15,
+                                color: scheme.onSurface.withValues(alpha: 0.55),
+                              ),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
@@ -724,14 +864,19 @@ class _AvailableDeliveryCardState extends State<_AvailableDeliveryCard> with Sin
                               ),
                             ],
                           ),
-                          if (widget.kitchenLatitude != null && widget.kitchenLongitude != null) ...[
+                          if (widget.kitchenLatitude != null &&
+                              widget.kitchenLongitude != null) ...[
                             const SizedBox(height: 2),
                             Padding(
                               padding: const EdgeInsets.only(left: 19),
                               child: LiveLocationText(
                                 latitude: widget.kitchenLatitude,
                                 longitude: widget.kitchenLongitude,
-                                style: text.bodySmall?.copyWith(color: scheme.onSurface.withValues(alpha: 0.55)),
+                                style: text.bodySmall?.copyWith(
+                                  color: scheme.onSurface.withValues(
+                                    alpha: 0.55,
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -739,7 +884,11 @@ class _AvailableDeliveryCardState extends State<_AvailableDeliveryCard> with Sin
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.location_on_outlined, size: 15, color: scheme.onSurface.withValues(alpha: 0.55)),
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 15,
+                                color: scheme.onSurface.withValues(alpha: 0.55),
+                              ),
                               const SizedBox(width: 4),
                               Expanded(
                                 child: Text(
@@ -756,7 +905,10 @@ class _AvailableDeliveryCardState extends State<_AvailableDeliveryCard> with Sin
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
+                        vertical: AppSpacing.sm,
+                      ),
                       decoration: BoxDecoration(
                         color: colors.successContainer,
                         borderRadius: AppRadius.mdBr,
@@ -765,9 +917,18 @@ class _AvailableDeliveryCardState extends State<_AvailableDeliveryCard> with Sin
                         children: [
                           Text(
                             formatCurrency(widget.riderFee),
-                            style: text.titleLarge?.copyWith(color: colors.onSuccessContainer),
+                            style: text.titleLarge?.copyWith(
+                              color: colors.onSuccessContainer,
+                            ),
                           ),
-                          Text('fee', style: text.labelSmall?.copyWith(color: colors.onSuccessContainer.withValues(alpha: 0.8))),
+                          Text(
+                            'fee',
+                            style: text.labelSmall?.copyWith(
+                              color: colors.onSuccessContainer.withValues(
+                                alpha: 0.8,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -777,7 +938,10 @@ class _AvailableDeliveryCardState extends State<_AvailableDeliveryCard> with Sin
                 if (widget.hasActiveDelivery)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm, horizontal: AppSpacing.md),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.sm,
+                      horizontal: AppSpacing.md,
+                    ),
                     decoration: BoxDecoration(
                       color: scheme.outline.withValues(alpha: 0.1),
                       borderRadius: AppRadius.mdBr,
@@ -785,11 +949,17 @@ class _AvailableDeliveryCardState extends State<_AvailableDeliveryCard> with Sin
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.info_outline_rounded, size: 15, color: scheme.onSurface.withValues(alpha: 0.55)),
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 15,
+                          color: scheme.onSurface.withValues(alpha: 0.55),
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Finish your current delivery first',
-                          style: text.labelMedium?.copyWith(color: scheme.onSurface.withValues(alpha: 0.6)),
+                          style: text.labelMedium?.copyWith(
+                            color: scheme.onSurface.withValues(alpha: 0.6),
+                          ),
                         ),
                       ],
                     ),
